@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Calculator</title>
+    <style>
+      * {
+        transition: all 0.25s;
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        font-family: Arial, Helvetica, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: whitesmoke;
+      }
+
+      .calculator {
+        width: 400px;
+        padding: 20px;
+        display: grid;
+        gap: 20px;
+        background: rgb(242, 242, 247);
+        border-radius: 15px;
+        box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.3);
+      }
+
+      .display {
+        font-size: 30px;
+        text-align: right;
+        width: 350px;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: inset 0px 5px 10px rgba(0, 0, 0, 0.2);
+        user-select: none;
+        border: none;
+        background-color: white;
+      }
+
+      .display:focus {
+        outline: none;
+      }
+
+      .button-container {
+        display: grid;
+        width: 350px;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+      }
+
+      button {
+        height: 60px;
+        text-align: center;
+        font-weight: bold;
+        font-size: 1.5rem;
+        border-radius: 5px;
+        box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.1);
+        border: none;
+        cursor: pointer;
+      }
+
+      .blue {
+        background-color: cornflowerblue;
+        color: white;
+      }
+
+      .org {
+        background-color: coral;
+        color: white;
+      }
+
+      button:hover {
+        background: black;
+        color: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="calculator">
+      <input id="display" class="display" readonly />
+
+      <div class="button-container">
+        <button class="blue" value="1">1</button>
+        <button class="blue" value="2">2</button>
+        <button class="blue" value="3">3</button>
+        <button class="org" value="/">/</button>
+        <button class="blue" value="4">4</button>
+        <button class="blue" value="5">5</button>
+        <button class="blue" value="6">6</button>
+        <button class="org" value="%">%</button>
+        <button class="blue" value="7">7</button>
+        <button class="blue" value="8">8</button>
+        <button class="blue" value="9">9</button>
+        <button class="org" value="*">*</button>
+        <button class="blue" value="0">0</button>
+        <button class="org" value="-">-</button>
+        <button class="org" value="+">+</button>
+        <button class="org" value="=">=</button>
+      </div>
+      <div style="display: flex; justify-content: center" class="clear">
+        <button
+          style="background-color: black; color: #fff; width: 70px"
+          value="C"
+        >
+          C
+        </button>
+      </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/mathjs@12.4.1/lib/browser/math.min.js"></script>
+    <script type="module" src="script.js"></script>
+  </body>
+</html>
