@@ -1,6 +1,8 @@
 import User from "../model/user.model.js";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 const registerUser = async (req, res) => {
   const { email, name, password } = req.body;
@@ -49,20 +51,18 @@ const registerUser = async (req, res) => {
     // Create a test account or replace with real credentials.
     const transporter = nodemailer.createTransport({
       host: process.env.MAILTRAP_HOST,
-      port: process.env.MAILTRAP_PORT,
+      port: process.env.MAILTRAP_PASSWORD,
       secure: false, // true for 465, false for other ports
       auth: {
         user: process.env.MAILTRAP_USERNAME,
         pass: process.env.MAILTRAP_PASSWORD,
       },
     });
-    console.log(process.env.MAILTRAP_HOST);
 
     const verificationLink = `${process.env.BASE_URL}/api/v1/users/verify/${token}`;
 
-    //FIXME: NOT ABLE TO SEND EMAILS
     const mailOptions = {
-      from: process.env.MAILTRAP_SENDEREMAIL,
+      from: process.env.MAILTRAP_SENDERMAIL,
       to: user.email,
       subject: "Verifiy your account ✔",
       text: `Hello! Please verify your email by visiting the following link: ${verificationLink}`, // fallback plain-text
@@ -100,5 +100,102 @@ const registerUser = async (req, res) => {
 };
 
 // TODO: VERIFY USER
+const verifyUser = async (req, res) => {
+  const { token } = req.params; //getting token from the URL
+  console.log(token);
 
-export { registerUser };
+  if (!token) {
+    return res.status(400).json({
+      message: "Invalid token!",
+    });
+  }
+
+  //putting the verification token in the DB means someone has hit the cerification link.
+  const user = await User.findOne({
+    verificationToken: token,
+  });
+
+  if (!user) {
+    return res.status(400).json({
+      message: "Invalid token",
+    });
+  }
+
+  user.isVerified = true;
+
+  user.verificationToken = undefined; //we can do null also
+
+  await user.save();
+};
+
+//Login route
+const login = async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({
+      message: "Please fill all the Fields.",
+    });
+  }
+
+  try {
+    const user = await User.findOne({
+      email,
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        message: "User not found!",
+      });
+    }
+
+    //checking the password
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(400).json({
+        message: "Invalid input",
+      });
+    }
+
+    //TODO: check if user is verified and then proceed to next step.
+
+    //now assign a token to user everytime they login and check the token with every user.
+    //Jason web token
+    const token = jwt.sign(
+      {
+        id: user._id,
+      },
+      process.env.JWT_secret,
+      {
+        expiresIn: "24h",
+      }
+    );
+
+    //now store it in the cookie
+    const cookieOptions = {
+      httpOnly: true,
+      secure: true,
+      maxAge: 24 * 60 * 60 * 1000,
+    };
+    res.cookie("token", token, cookieOptions);
+
+    //if everthing is right return the user
+    res.status(201).json({
+      success: true,
+      message: "Login successfully",
+      user: {
+        id: user._id,
+        name: user.name,
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      message: "User failed to login",
+    });
+  }
+};
+
+export { registerUser, verifyUser, login };
