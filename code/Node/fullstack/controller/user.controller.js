@@ -101,31 +101,42 @@ const registerUser = async (req, res) => {
 
 // VERIFY USER
 const verifyUser = async (req, res) => {
-  const { token } = req.params; //getting token from the URL
-  console.log(token);
+  try {
+    const { token } = req.params; //getting token from the URL
+    console.log(token);
 
-  if (!token) {
-    return res.status(400).json({
-      message: "Invalid token!",
+    if (!token) {
+      return res.status(400).json({
+        message: "Invalid token!",
+      });
+    }
+
+    // Find the user with the matching verification token
+    const user = await User.findOne({
+      verificationToken: token,
     });
-  }
 
-  //putting the verification token in the DB means someone has hit the cerification link.
-  const user = await User.findOne({
-    verificationToken: token,
-  });
+    if (!user) {
+      return res.status(400).json({
+        message: "Invalid token",
+      });
+    }
 
-  if (!user) {
-    return res.status(400).json({
-      message: "Invalid token",
+    user.isVerified = true;
+
+    user.verificationToken = undefined; //we can do null also both are fine
+
+    await user.save();
+
+    return res.status(200).json({
+      message: "User verified successfully!",
     });
+  } catch (error) {
+    console.error("Error verifying user:", error);
+    return res
+      .status(500)
+      .json({ message: "Server error. Please try again later." });
   }
-
-  user.isVerified = true;
-
-  user.verificationToken = undefined; //we can do null also
-
-  await user.save();
 };
 
 //Login route
@@ -246,7 +257,127 @@ const logout = async (req, res) => {
 };
 
 //TODO: Forget password
+const forgetPassword = async (req, res) => {
+  const { email } = req.body;
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "User not found!",
+      });
+    }
+
+    const token = jwt.sign(
+      {
+        email: email,
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "24h",
+      }
+    );
+    user.ResetpasswordToken = token;
+    user.resetPasswordExpires = Date.now() + 10 * 60 * 1000; //means it's valid for only 10mins.
+
+    await user.save();
+
+    //send token as email
+    // Create a test account or replace with real credentials.
+    const transporter = nodemailer.createTransport({
+      host: process.env.MAILTRAP_HOST,
+      port: process.env.MAILTRAP_PASSWORD,
+      secure: false, // true for 465, false for other ports
+      auth: {
+        user: process.env.MAILTRAP_USERNAME,
+        pass: process.env.MAILTRAP_PASSWORD,
+      },
+    });
+
+    const verificationLink = `${process.env.BASE_URL}/api/v1/users/resetpass/${token}`;
+
+    const mailOptions = {
+      from: process.env.MAILTRAP_SENDERMAIL,
+      to: user.email,
+      subject: "Reset your Password ✔",
+      text: `Hello! Please reset your password by visiting the following link: ${verificationLink}`, // fallback plain-text
+      html: `
+        <p>Hello!</p>
+        <p>Please click the button below to reset your Password:</p>
+        <a href="${verificationLink}" target="_blank" style="
+        display: inline-block;
+        padding: 10px 20px;
+        background-color: #4CAF50;
+        color: white;
+        text-decoration: none;
+        border-radius: 5px;
+        font-weight: bold;
+        ">Verify Email</a>
+        <p>If the button doesn't work, copy and paste this link into your browser:</p>
+        <p><a href="${verificationLink}" target="_blank">${verificationLink}</a></p>
+    `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    //send success
+    res.status(201).json({
+      success: true,
+      message: "Mail sent successfully",
+    });
+  } catch (error) {
+    console.log("error forgetting password" + error);
+    return res.status(400).json({
+      success: false,
+      message: "failed to forget password ",
+    });
+  }
+};
 
 //TODO: reset password
+const resetPassword = async (req, res) => {
+  const { token } = req.params;
+  const { password } = req.body;
 
-export { registerUser, verifyUser, login, profile, logout };
+  try {
+    const user = await User.findOne({
+      ResetpasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() }, //gt--> means greater than current time
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "User Not found",
+      });
+    }
+    user.password = password;
+
+    user.ResetpasswordToken = "";
+    user.resetPasswordExpires = "";
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Password reset successfully",
+    });
+  } catch (error) {
+    console.log("error reseting password" + error);
+    return res.status(400).json({
+      success: false,
+      message: "failed to reset password ",
+    });
+  }
+};
+
+export {
+  registerUser,
+  verifyUser,
+  login,
+  profile,
+  logout,
+  forgetPassword,
+  resetPassword,
+};
