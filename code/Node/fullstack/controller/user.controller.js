@@ -99,7 +99,7 @@ const registerUser = async (req, res) => {
   }
 };
 
-// TODO: VERIFY USER
+// VERIFY USER
 const verifyUser = async (req, res) => {
   const { token } = req.params; //getting token from the URL
   console.log(token);
@@ -166,7 +166,7 @@ const login = async (req, res) => {
       {
         id: user._id,
       },
-      process.env.JWT_secret,
+      process.env.JWT_SECRET,
       {
         expiresIn: "24h",
       }
@@ -198,4 +198,55 @@ const login = async (req, res) => {
   }
 };
 
-export { registerUser, verifyUser, login };
+//TODO: profile route
+const profile = async (req, res) => {
+  try {
+    const data = req.user;
+
+    //this return everything except password.
+    const user = await User.findById(data.id).select("-password");
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "User Not found!",
+      });
+    }
+
+    //if user found return true with the user detail.
+    res.status(200).json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    console.log("failed to get profile " + error);
+    return res.status(400).json({
+      success: false,
+      message: "Error loading profile!",
+    });
+  }
+};
+
+//TODO: logout
+const logout = async (req, res) => {
+  try {
+    res.cookie("token", " ", {}); //--> {expires: new Date(0)} --> by writting this the token will be removed imidiately
+
+    res.status(200).json({
+      success: true,
+      message: "Logged out Successfully",
+    });
+  } catch (error) {
+    console.log("fail to log out " + error);
+    return res.status(400).json({
+      success: false,
+      message: "Error logging out!",
+    });
+  }
+};
+
+//TODO: Forget password
+
+//TODO: reset password
+
+export { registerUser, verifyUser, login, profile, logout };
