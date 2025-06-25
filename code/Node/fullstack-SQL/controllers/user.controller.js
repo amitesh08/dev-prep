@@ -6,6 +6,7 @@ import jwt from "jsonwebtoken";
 
 const prisma = new PrismaClient();
 
+//register user
 const registerUser = async (req, res) => {
   const { email, name, password } = req.body;
 
@@ -271,4 +272,181 @@ const profile = async (req, res) => {
   }
 };
 
-export { registerUser, verify, login, profile };
+//logout
+const logout = async (req, res) => {
+  try {
+    res.cookie("token", " ", {}); //--> {expires: new Date(0)} --> by writting this the token will be removed imidiately
+
+    res.status(200).json({
+      success: true,
+      message: "Logged out Successfully",
+    });
+  } catch (error) {
+    console.log("fail to log out " + error);
+    return res.status(400).json({
+      success: false,
+      message: "Error logging out!",
+    });
+  }
+};
+
+//forget password
+const forgetPassword = async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({
+      success: false,
+      message: "please provide email!",
+    });
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: {
+        email,
+      },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "user not found!",
+      });
+    }
+
+    const token = jwt.sign(
+      {
+        email: user.email,
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "24h",
+      }
+    );
+
+    await prisma.user.update({
+      where: {
+        id: user.id,
+      },
+      data: {
+        passwordResetToken: token,
+        passwordResetExpiry: new Date(Date.now() + 10 * 60 * 1000),
+      },
+    });
+
+    //send token as email
+    // Create a test account or replace with real credentials.
+    const transporter = nodemailer.createTransport({
+      host: process.env.MAILTRAP_HOST,
+      port: process.env.MAILTRAP_PORT,
+      secure: false, // true for 465, false for other ports
+      auth: {
+        user: process.env.MAILTRAP_USERNAME,
+        pass: process.env.MAILTRAP_PASSWORD,
+      },
+    });
+
+    const verificationLink = `${process.env.BASE_URL}/api/v1/users/resetpass/${token}`;
+
+    const mailOptions = {
+      from: process.env.MAILTRAP_SENDERMAIL,
+      to: user.email,
+      subject: "Reset your Password ✔",
+      text: `Hello! Please reset your password by visiting the following link: ${verificationLink}`, // fallback plain-text
+      html: `
+        <p>Hello!</p>
+        <p>Please click the button below to reset your Password:</p>
+        <a href="${verificationLink}" target="_blank" style="
+        display: inline-block;
+        padding: 10px 20px;
+        background-color: #4CAF50;
+        color: white;
+        text-decoration: none;
+        border-radius: 5px;
+        font-weight: bold;
+        ">Verify Email</a>
+        <p>If the button doesn't work, copy and paste this link into your browser:</p>
+        <p><a href="${verificationLink}" target="_blank">${verificationLink}</a></p>
+    `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    //send success
+    res.status(201).json({
+      success: true,
+      message: "Reset password link sent successfully",
+    });
+  } catch (error) {
+    console.log("error forgetting password" + error);
+    return res.status(400).json({
+      success: false,
+      message: "failed to forget password ",
+    });
+  }
+};
+//reset password
+const resetPassword = async (req, res) => {
+  const { newPassword } = req.body;
+  const { token } = req.params;
+
+  if (!token || !newPassword) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid request",
+    });
+  }
+
+  try {
+    const user = await prisma.user.findFirst({
+      where: {
+        passwordResetToken: token,
+        passwordResetExpiry: {
+          gt: new Date(), //greater than now
+        },
+      },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Token is invalid or has expired.",
+      });
+    }
+
+    const hashedPass = await bcrypt.hash(newPassword, 10);
+
+    await prisma.user.update({
+      where: {
+        id: user.id,
+      },
+      data: {
+        password: hashedPass,
+        passwordResetToken: null,
+        passwordResetExpiry: null,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Password reset successfully",
+    });
+  } catch (error) {
+    console.log("error reseting password" + error);
+    return res.status(400).json({
+      success: false,
+      message: "failed to reset password ",
+    });
+  }
+};
+
+export {
+  registerUser,
+  verify,
+  login,
+  profile,
+  logout,
+  forgetPassword,
+  resetPassword,
+};
