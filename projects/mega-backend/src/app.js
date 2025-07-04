@@ -1,5 +1,10 @@
-import express from 'express'
+import express from "express";
 
-const app = express()
+const app = express();
 
-export default app
+//router imports
+import { healthCheckRouter } from "./routes/healthcheck.routes.js";
+
+appp.use("api/v1/healthcheck", healthCheckRouter);
+
+export default app;
