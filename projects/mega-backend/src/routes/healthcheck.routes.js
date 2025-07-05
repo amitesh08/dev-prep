@@ -3,7 +3,7 @@ import { healthCheck } from "../controllers/healthcheck.controllers.js";
 
 const router = Router();
 
+// router.route("/").get(healthCheck);  --> can also write like this
 router.get("/", healthCheck);
-//router.route("/").get(healthCheck)
 
 export default router;

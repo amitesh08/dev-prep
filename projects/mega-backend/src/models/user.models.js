@@ -94,9 +94,9 @@ userSchema.methods.genrateRefreshToken = function () {
 };
 
 userSchema.methods.genrateTemporaryToken = async function () {
-  const unHashedToken = await crypto.randomBytes(20).toString("hex");
+  const unHashedToken = crypto.randomBytes(20).toString("hex");
 
-  const hashedToken = await crypto
+  const hashedToken = crypto
     .createHash("sha256")
     .update(unHashedToken)
     .digest("hex");
