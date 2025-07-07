@@ -108,7 +108,7 @@ const verify = asyncHandler(async (req, res) => {
   );
 });
 
-//TODO: login user
+//login user
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
@@ -153,6 +153,15 @@ const loginUser = asyncHandler(async (req, res) => {
   );
 });
 
+//logout user
+const logoutUser = asyncHandler(async (req, res) => {
+  res.cookie("refreshToken", " ", {});
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, "user logged out successfully! "));
+});
+
 //TODO:
 const resendVerifcationEmail = asyncHandler(async (req, res) => {
   const { email, username, password, role } = req.body;
@@ -188,4 +197,4 @@ const getCurrentUser = asyncHandler(async (req, res) => {
   //validation
 });
 
-export { registerUser, verify, loginUser };
+export { registerUser, verify, loginUser, logoutUser };

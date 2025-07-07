@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   loginUser,
+  logoutUser,
   registerUser,
   verify,
 } from "../controllers/auth.controllers.js";
@@ -21,5 +22,6 @@ router
 router.route("/verify/:token").get(verify);
 
 router.route("/login").post(userLoginValidator(), validate, loginUser);
+router.route("/logout").get(logoutUser);
 
 export default router;
