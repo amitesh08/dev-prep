@@ -1,5 +1,5 @@
 import { asyncHandler } from "../utils/async-handler.js";
-import { userRegistrationValidator } from "../validators/index.js";
+import crypto from "crypto";
 import { ApiError } from "../utils/api-error.js";
 import { ApiResponse } from "../utils/api-response.js";
 import { User } from "../models/user.models.js";
@@ -43,7 +43,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   await newUser.save();
 
-  const verificationURL = `${process.env.BASE_URL}/api/v1/users/verify/${unHashedToken}`;
+  const verificationURL = `${process.env.BASE_URL}/api/v1/verify/${unHashedToken}`;
 
   try {
     await sendMail({
@@ -62,7 +62,6 @@ const registerUser = asyncHandler(async (req, res) => {
     // Optional: delete the user if you don't want unverified users lingering
     await User.findByIdAndDelete(newUser._id);
 
-    // Or: just throw to let global error handler take over
     throw new ApiError(
       500,
       "User created but failed to send verification email",
@@ -78,6 +77,39 @@ const registerUser = asyncHandler(async (req, res) => {
         username: newUser.username,
       },
       "User created successfully",
+    ),
+  );
+});
+
+//TODO:
+const verify = asyncHandler(async (req, res) => {
+  const { token } = req.params;
+
+  const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+  //validation
+  const user = await User.findOne({
+    emailVerificationToken: hashedToken,
+    emailVerificationExpiry: { $gt: Date.now() }, // check it's not expired
+  });
+
+  if (!user) {
+    throw new ApiError(404, "Invalid or expired verification token");
+  }
+
+  user.emailVerificationToken = "";
+  user.emailVerificationExpiry = "";
+  user.isEmailVerified = true;
+
+  await user.save();
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        username: user.username,
+      },
+      "User verified successfully",
     ),
   );
 });
@@ -117,4 +149,4 @@ const getCurrentUser = asyncHandler(async (req, res) => {
   //validation
 });
 
-export { registerUser };
+export { registerUser, verify };

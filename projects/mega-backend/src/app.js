@@ -11,6 +11,13 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 
+app.use(
+  express.urlencoded({
+    //to send data via URL
+    extended: true,
+  }),
+);
+
 app.use("/api/v1/healthcheck", healthCheckRouter);
 app.use("/api/v1", authRouter);
 
