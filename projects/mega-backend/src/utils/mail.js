@@ -24,13 +24,13 @@ const sendMail = async (options) => {
     port: process.env.MAILTRAP_PORT,
     secure: false, // true for 465, false for other ports
     auth: {
-      user: process.env.USERNAME,
-      pass: process.env.PASSWORD,
+      user: process.env.MAILTRAP_USERNAME,
+      pass: process.env.MAILTRAP_PASSWORD,
     },
   });
 
   const mail = {
-    from: process.env.SENDERMAIL,
+    from: process.env.MAILTRAP_SENDERMAIL,
     to: options.email,
     subject: options.subject,
     text: eamilText, // plain‑text body
@@ -40,7 +40,7 @@ const sendMail = async (options) => {
   try {
     await transporter.sendMail(mail);
   } catch (error) {
-    console.log("Email failed to send!" + err);
+    console.log("Email failed to send!" + error);
   }
 };
 
@@ -62,13 +62,6 @@ const emailVerificationMailGenContent = (username, verificationURL) => {
     },
   };
 };
-
-// //how to use send email
-// sendMail({
-//   email: user.email,
-//   subject: " aaaa",
-//   mailGenContent: emailVerificationMailGenContent(username, verificationURL),
-// });
 
 const forgotPasswordMailGenContent = (username, passwordResetURL) => {
   return {
@@ -95,3 +88,8 @@ const forgotPasswordMailGenContent = (username, passwordResetURL) => {
 //     subject: " aaaa",
 //     mailGenContent: emailVerificationMailGenContent(username, passwordResetURL),
 //   });
+export {
+  sendMail,
+  emailVerificationMailGenContent,
+  forgotPasswordMailGenContent,
+};
