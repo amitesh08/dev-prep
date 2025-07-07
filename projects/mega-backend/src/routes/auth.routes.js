@@ -1,7 +1,14 @@
 import { Router } from "express";
-import { registerUser, verify } from "../controllers/auth.controllers.js";
+import {
+  loginUser,
+  registerUser,
+  verify,
+} from "../controllers/auth.controllers.js";
 import { validate } from "../middlewares/validator.middleware.js";
-import { userRegistrationValidator } from "../validators/index.js";
+import {
+  userLoginValidator,
+  userRegistrationValidator,
+} from "../validators/index.js";
 
 const router = Router();
 
@@ -12,5 +19,7 @@ router
   .post(userRegistrationValidator(), validate, registerUser);
 
 router.route("/verify/:token").get(verify);
+
+router.route("/login").post(userLoginValidator(), validate, loginUser);
 
 export default router;

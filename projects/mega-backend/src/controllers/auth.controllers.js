@@ -5,15 +5,9 @@ import { ApiResponse } from "../utils/api-response.js";
 import { User } from "../models/user.models.js";
 import { emailVerificationMailGenContent, sendMail } from "../utils/mail.js";
 
+//register user
 const registerUser = asyncHandler(async (req, res) => {
   const { email, username, fullname, password } = req.body;
-
-  //validation
-  // const isValid = userRegistrationValidator(req.body);
-
-  // if (!isValid) {
-  //   throw new ApiError(404, "Error registring user!");
-  // }
 
   const existingUser = await User.findOne({
     email,
@@ -81,7 +75,7 @@ const registerUser = asyncHandler(async (req, res) => {
   );
 });
 
-//TODO:
+//verify email
 const verify = asyncHandler(async (req, res) => {
   const { token } = req.params;
 
@@ -110,6 +104,51 @@ const verify = asyncHandler(async (req, res) => {
         username: user.username,
       },
       "User verified successfully",
+    ),
+  );
+});
+
+//TODO: login user
+const loginUser = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+
+  const user = await User.findOne({
+    email,
+  });
+
+  if (!user) {
+    throw new ApiError(400, "User didn't exist!");
+  }
+
+  const isPassCorrect = await user.isPasswordCorrect(password);
+
+  if (!isPassCorrect) {
+    throw new ApiError(400, "Invalid inputs!");
+  }
+
+  const accessToken = user.genrateAccessToken();
+  const refreshToken = user.genrateRefreshToken();
+
+  user.refreshToken = refreshToken;
+
+  await user.save();
+
+  //now store it in the cookie
+  const cookieOptions = {
+    httpOnly: true,
+    secure: true,
+    maxAge: 24 * 60 * 60 * 1000,
+  };
+  res.cookie("refreshToken", refreshToken, cookieOptions);
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        username: user.username,
+        token: accessToken,
+      },
+      "User logged in successfully",
     ),
   );
 });
@@ -149,4 +188,4 @@ const getCurrentUser = asyncHandler(async (req, res) => {
   //validation
 });
 
-export { registerUser, verify };
+export { registerUser, verify, loginUser };
