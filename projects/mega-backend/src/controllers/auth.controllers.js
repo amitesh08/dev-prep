@@ -1,32 +1,85 @@
 import { asyncHandler } from "../utils/async-handler.js";
 import { userRegistrationValidator } from "../validators/index.js";
+import { ApiError } from "../utils/api-error.js";
+import { ApiResponse } from "../utils/api-response.js";
+import { User } from "../models/user.models.js";
+import { emailVerificationMailGenContent, sendMail } from "../utils/mail.js";
 
 const registerUser = asyncHandler(async (req, res) => {
-  const { email, username, password, role } = req.body;
+  const { email, username, fullname, password } = req.body;
 
   //validation
-  userRegistrationValidator(req.body);
-});
+  // const isValid = userRegistrationValidator(req.body);
 
-//TODO:
-const loginUser = asyncHandler(async (req, res) => {
-  const { email, username, password, role } = req.body;
+  // if (!isValid) {
+  //   throw new ApiError(404, "Error registring user!");
+  // }
 
-  //validation
-});
+  const existingUser = await User.findOne({
+    email,
+  });
 
-//TODO:
-const logOutUser = asyncHandler(async (req, res) => {
-  const { email, username, password, role } = req.body;
+  if (existingUser) {
+    throw new ApiError(404, "User already exists");
+  }
 
-  //validation
-});
+  const newUser = await User.create({
+    email,
+    username,
+    password,
+    fullname,
+  });
 
-//TODO:
-const verifyEmail = asyncHandler(async (req, res) => {
-  const { email, username, password, role } = req.body;
+  if (!newUser) {
+    throw new ApiError(400, "User not registered!");
+  }
 
-  //validation
+  //genrating token
+  const { hashedToken, unHashedToken, tokenExpiry } =
+    await newUser.genrateTemporaryToken();
+
+  newUser.emailVerificationToken = hashedToken;
+  newUser.emailVerificationExpiry = tokenExpiry;
+
+  await newUser.save();
+
+  const verificationURL = `${process.env.BASE_URL}/api/v1/users/verify/${unHashedToken}`;
+
+  try {
+    await sendMail({
+      email: newUser.email,
+      subject: "Verification Email",
+      mailGenContent: emailVerificationMailGenContent(
+        username,
+        verificationURL,
+      ),
+    });
+  } catch (error) {
+    console.log("caught error in mail");
+
+    console.error("❌ Failed to send verification email:", error);
+
+    // Optional: delete the user if you don't want unverified users lingering
+    await User.findByIdAndDelete(newUser._id);
+
+    // Or: just throw to let global error handler take over
+    throw new ApiError(
+      500,
+      "User created but failed to send verification email",
+    );
+  }
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        _id: newUser._id,
+        email: newUser.email,
+        username: newUser.username,
+      },
+      "User created successfully",
+    ),
+  );
 });
 
 //TODO:

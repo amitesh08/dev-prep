@@ -5,7 +5,8 @@ import { userRegistrationValidator } from "../validators/index.js";
 
 const router = Router();
 
-router.post("/register", userRegistrationValidator(), validate, registerUser);
+// router.post("/register", userRegistrationValidator(), validate, registerUser);
+//can also write it like below
 router
   .route("/register")
   .post(userRegistrationValidator(), validate, registerUser);
