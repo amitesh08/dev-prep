@@ -5,6 +5,7 @@ import {
   getCurrentUser,
   loginUser,
   logoutUser,
+  refreshAccessToken,
   registerUser,
   verify,
 } from "../controllers/auth.controllers.js";
@@ -26,5 +27,6 @@ router.route("/verify/:token").get(verify);
 router.route("/login").post(userLoginValidator(), validate, loginUser);
 router.route("/logout").get(verifyJWT, logoutUser);
 router.route("/me").get(verifyJWT, getCurrentUser);
+router.route("/refresh-token").get(refreshAccessToken);
 
 export default router;

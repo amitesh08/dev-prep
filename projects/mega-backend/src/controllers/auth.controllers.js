@@ -1,9 +1,11 @@
 import { asyncHandler } from "../utils/async-handler.js";
 import crypto from "crypto";
+import jwt from "jsonwebtoken";
 import { ApiError } from "../utils/api-error.js";
 import { ApiResponse } from "../utils/api-response.js";
 import { User } from "../models/user.models.js";
 import { emailVerificationMailGenContent, sendMail } from "../utils/mail.js";
+import { decode } from "punycode";
 
 //register user
 const registerUser = asyncHandler(async (req, res) => {
@@ -141,11 +143,11 @@ const loginUser = asyncHandler(async (req, res) => {
   };
   res.cookie("refreshToken", refreshToken, {
     ...cookieOptions,
-    maxAge: 15 * 60 * 1000, // 15 minutes
+    maxAge: 24 * 60 * 60 * 1000,
   });
   res.cookie("accessToken", accessToken, {
     ...cookieOptions,
-    maxAge: 24 * 60 * 60 * 1000,
+    maxAge: 15 * 60 * 1000, // 15 minutes
   });
 
   return res.status(200).json(
@@ -188,7 +190,7 @@ const logoutUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, "user logged out successfully! "));
 });
 
-//TODO:
+//profile
 const getCurrentUser = asyncHandler(async (req, res) => {
   const user = req.user;
 
@@ -201,15 +203,72 @@ const getCurrentUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, user, `Welcome ${user.name}`));
 });
 
-//TODO:
-const resendVerifcationEmail = asyncHandler(async (req, res) => {
-  const { email, username, password, role } = req.body;
+//refresh Access Token
+const refreshAccessToken = asyncHandler(async (req, res) => {
+  const { refreshToken } = req.cookies;
 
-  //validation
+  if (!refreshToken) {
+    throw new ApiError(401, "Unauthorised token!");
+  }
+
+  try {
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+
+    if (!decoded) {
+      throw new ApiError(401, "Token expired!");
+    }
+
+    const user = await User.findById(decoded._id);
+
+    if (!user) {
+      throw new ApiError(401, "Invalid refresh token!");
+    }
+
+    const isToken = user.refreshToken == refreshToken;
+
+    if (!isToken) {
+      throw new ApiError(401, "Token mismatch or unauthorized");
+    }
+
+    const accessToken = user.genrateAccessToken();
+
+    const newRefreshToken = user.genrateRefreshToken();
+
+    user.refreshToken = refreshToken;
+    await user.save();
+
+    //now store it in the cookie
+    const cookieOptions = {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+    };
+    res.cookie("refreshToken", refreshToken, {
+      ...cookieOptions,
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+    res.cookie("accessToken", accessToken, {
+      ...cookieOptions,
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          username: user.username,
+          accessToken: accessToken,
+        },
+        "token set successfully ",
+      ),
+    );
+  } catch (error) {
+    console.error("Refresh token error:", error.message);
+  }
 });
 
 //TODO:
-const refreshAccessToken = asyncHandler(async (req, res) => {
+const resendVerifcationEmail = asyncHandler(async (req, res) => {
   const { email, username, password, role } = req.body;
 
   //validation
