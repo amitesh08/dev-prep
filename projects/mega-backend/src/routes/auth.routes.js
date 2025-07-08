@@ -2,6 +2,7 @@ import { Router } from "express";
 import { validate } from "../middlewares/validator.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import {
+  getCurrentUser,
   loginUser,
   logoutUser,
   registerUser,
@@ -24,5 +25,6 @@ router.route("/verify/:token").get(verify);
 
 router.route("/login").post(userLoginValidator(), validate, loginUser);
 router.route("/logout").get(verifyJWT, logoutUser);
+router.route("/me").get(verifyJWT, getCurrentUser);
 
 export default router;

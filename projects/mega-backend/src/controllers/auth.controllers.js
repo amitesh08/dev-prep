@@ -189,6 +189,19 @@ const logoutUser = asyncHandler(async (req, res) => {
 });
 
 //TODO:
+const getCurrentUser = asyncHandler(async (req, res) => {
+  const user = req.user;
+
+  if (!user) {
+    throw new ApiError(404, "Can't get the user!");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, `Welcome ${user.name}`));
+});
+
+//TODO:
 const resendVerifcationEmail = asyncHandler(async (req, res) => {
   const { email, username, password, role } = req.body;
 
@@ -216,11 +229,14 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
   //validation
 });
 
-//TODO:
-const getCurrentUser = asyncHandler(async (req, res) => {
-  const { email, username, password, role } = req.body;
-
-  //validation
-});
-
-export { registerUser, verify, loginUser, logoutUser };
+export {
+  registerUser,
+  verify,
+  loginUser,
+  logoutUser,
+  getCurrentUser,
+  forgotPasswordRequest,
+  resendVerifcationEmail,
+  refreshAccessToken,
+  changeCurrentPassword,
+};
