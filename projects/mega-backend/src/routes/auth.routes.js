@@ -1,11 +1,12 @@
 import { Router } from "express";
+import { validate } from "../middlewares/validator.middleware.js";
+import { verifyJWT } from "../middlewares/auth.middleware.js";
 import {
   loginUser,
   logoutUser,
   registerUser,
   verify,
 } from "../controllers/auth.controllers.js";
-import { validate } from "../middlewares/validator.middleware.js";
 import {
   userLoginValidator,
   userRegistrationValidator,
@@ -22,6 +23,6 @@ router
 router.route("/verify/:token").get(verify);
 
 router.route("/login").post(userLoginValidator(), validate, loginUser);
-router.route("/logout").get(logoutUser);
+router.route("/logout").get(verifyJWT, logoutUser);
 
 export default router;

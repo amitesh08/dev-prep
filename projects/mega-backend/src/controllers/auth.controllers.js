@@ -137,16 +137,23 @@ const loginUser = asyncHandler(async (req, res) => {
   const cookieOptions = {
     httpOnly: true,
     secure: true,
-    maxAge: 24 * 60 * 60 * 1000,
+    sameSite: "none",
   };
-  res.cookie("refreshToken", refreshToken, cookieOptions);
+  res.cookie("refreshToken", refreshToken, {
+    ...cookieOptions,
+    maxAge: 15 * 60 * 1000, // 15 minutes
+  });
+  res.cookie("accessToken", accessToken, {
+    ...cookieOptions,
+    maxAge: 24 * 60 * 60 * 1000,
+  });
 
   return res.status(200).json(
     new ApiResponse(
       200,
       {
         username: user.username,
-        token: accessToken,
+        accessToken: accessToken,
       },
       "User logged in successfully",
     ),
@@ -155,7 +162,26 @@ const loginUser = asyncHandler(async (req, res) => {
 
 //logout user
 const logoutUser = asyncHandler(async (req, res) => {
-  res.cookie("refreshToken", " ", {});
+  const { refreshToken } = req.cookies;
+
+  if (refreshToken) {
+    const user = await User.findOne({ refreshToken });
+
+    if (user) {
+      user.refreshToken = "";
+      await user.save();
+    }
+  }
+
+  const cookieOptions = {
+    httpOnly: true,
+    secure: true, // make sure HTTPS is enabled in production
+    sameSite: "none",
+  };
+
+  // Properly clear cookies by setting expired dates
+  res.clearCookie("accessToken", cookieOptions);
+  res.clearCookie("refreshToken", cookieOptions);
 
   return res
     .status(200)
