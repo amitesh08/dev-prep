@@ -267,11 +267,50 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   }
 });
 
-//TODO:
-const resendVerifcationEmail = asyncHandler(async (req, res) => {
-  const { email, username, password, role } = req.body;
+//resend Verification Email
+const resendVerificationEmail = asyncHandler(async (req, res) => {
+  const { email } = req.body;
 
-  //validation
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      throw new ApiError(404, "User didn't exist!");
+    }
+
+    if (user.isEmailVerified) {
+      return res
+        .status(200)
+        .json(new ApiResponse(200, null, "user is already verified!"));
+    }
+
+    const { hashedToken, unHashedToken, tokenExpiry } =
+      await user.genrateTemporaryToken();
+
+    user.emailVerificationToken = hashedToken;
+    user.emailVerificationExpiry = tokenExpiry;
+
+    await user.save();
+
+    const verificationURL = `${process.env.BASE_URL}/api/v1/verify/${unHashedToken}`;
+
+    await sendMail({
+      email: email,
+      subject: "Verification Email",
+      mailGenContent: emailVerificationMailGenContent(
+        user.name,
+        verificationURL,
+      ),
+    });
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, null, "Verification mail resent!"));
+  } catch (error) {
+    console.error("❌ Failed to resend verification email:", error.message);
+
+    throw new ApiError(500, "failed to resend verification email");
+  }
 });
 
 //TODO:
@@ -295,7 +334,7 @@ export {
   logoutUser,
   getCurrentUser,
   forgotPasswordRequest,
-  resendVerifcationEmail,
+  resendVerificationEmail,
   refreshAccessToken,
   changeCurrentPassword,
 };

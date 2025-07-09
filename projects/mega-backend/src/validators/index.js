@@ -38,4 +38,14 @@ const userLoginValidator = () => {
   ];
 };
 
-export { userRegistrationValidator, userLoginValidator };
+const emailOnlyValidator = () => {
+  return [
+    body("email")
+      .notEmpty()
+      .withMessage("Email is required")
+      .isEmail()
+      .withMessage("Email is invalid"),
+  ];
+};
+
+export { userRegistrationValidator, userLoginValidator, emailOnlyValidator };

@@ -7,9 +7,11 @@ import {
   logoutUser,
   refreshAccessToken,
   registerUser,
+  resendVerificationEmail,
   verify,
 } from "../controllers/auth.controllers.js";
 import {
+  emailOnlyValidator,
   userLoginValidator,
   userRegistrationValidator,
 } from "../validators/index.js";
@@ -27,6 +29,9 @@ router.route("/verify/:token").get(verify);
 router.route("/login").post(userLoginValidator(), validate, loginUser);
 router.route("/logout").get(verifyJWT, logoutUser);
 router.route("/me").get(verifyJWT, getCurrentUser);
-router.route("/refresh-token").get(refreshAccessToken);
+router.route("/refresh-token").post(refreshAccessToken);
+router
+  .route("/resend-verification")
+  .post(emailOnlyValidator(), validate, resendVerificationEmail);
 
 export default router;
