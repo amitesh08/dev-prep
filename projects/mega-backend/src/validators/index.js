@@ -48,4 +48,39 @@ const emailOnlyValidator = () => {
   ];
 };
 
-export { userRegistrationValidator, userLoginValidator, emailOnlyValidator };
+const passwordOnlyValidator = () => {
+  return [
+    body("password")
+      .trim()
+      .notEmpty()
+      .withMessage("Password is required")
+      .isLength({ min: 7, max: 13 })
+      .withMessage("Password must be between 7 and 13 characters"),
+  ];
+};
+
+const passwordChangeValidator = () => {
+  return [
+    body("oldPassword")
+      .trim()
+      .notEmpty()
+      .withMessage("Old password is required")
+      .isLength({ min: 7, max: 13 })
+      .withMessage("Old password must be between 7 and 13 characters"),
+
+    body("newPassword")
+      .trim()
+      .notEmpty()
+      .withMessage("New password is required")
+      .isLength({ min: 7, max: 13 })
+      .withMessage("New password must be between 7 and 13 characters"),
+  ];
+};
+
+export {
+  userRegistrationValidator,
+  userLoginValidator,
+  emailOnlyValidator,
+  passwordOnlyValidator,
+  passwordChangeValidator,
+};

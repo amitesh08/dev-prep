@@ -4,8 +4,11 @@ import jwt from "jsonwebtoken";
 import { ApiError } from "../utils/api-error.js";
 import { ApiResponse } from "../utils/api-response.js";
 import { User } from "../models/user.models.js";
-import { emailVerificationMailGenContent, sendMail } from "../utils/mail.js";
-import { decode } from "punycode";
+import {
+  emailVerificationMailGenContent,
+  forgotPasswordMailGenContent,
+  sendMail,
+} from "../utils/mail.js";
 
 //register user
 const registerUser = asyncHandler(async (req, res) => {
@@ -313,18 +316,116 @@ const resendVerificationEmail = asyncHandler(async (req, res) => {
   }
 });
 
-//TODO:
+//forgot Password request
 const forgotPasswordRequest = asyncHandler(async (req, res) => {
-  const { email, username, password, role } = req.body;
+  const { email } = req.body;
 
-  //validation
+  try {
+    const user = await User.findOne({ email });
+
+    //why response like this --> This protects you from email enumeration attacks.
+    if (!user) {
+      return res
+        .status(200)
+        .json(
+          new ApiResponse(
+            200,
+            null,
+            "If a matching account exists, a reset link has been sent.",
+          ),
+        );
+    }
+
+    const { hashedToken, unHashedToken, tokenExpiry } =
+      await user.genrateTemporaryToken();
+
+    user.forgotPasswordToken = hashedToken;
+    user.forgotPasswordExpiry = tokenExpiry;
+
+    await user.save();
+
+    const passwordResetURL = `${process.env.BASE_URL}/api/v1/reset-password/${unHashedToken}`;
+
+    await sendMail({
+      email: email,
+      subject: "Reset your password",
+      mailGenContent: forgotPasswordMailGenContent(user.name, passwordResetURL),
+    });
+
+    //why response like this --> This protects you from email enumeration attacks.
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          null,
+          "If a matching account exists, a reset link has been sent.",
+        ),
+      );
+  } catch (error) {
+    console.error("❌ Failed to send password reset email:", error.message);
+
+    throw new ApiError(500, "failed to send password reset email");
+  }
 });
 
-//TODO:
-const changeCurrentPassword = asyncHandler(async (req, res) => {
-  const { email, username, password, role } = req.body;
+//change reset password
+const resetPassword = asyncHandler(async (req, res) => {
+  const { password } = req.body;
+  const { token } = req.params;
 
-  //validation
+  try {
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const user = await User.findOne({
+      forgotPasswordToken: hashedToken,
+      forgotPasswordExpiry: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      throw new ApiError(404, "Invalid or expired token!");
+    }
+
+    user.password = password;
+    user.forgotPasswordToken = "";
+    user.forgotPasswordExpiry = "";
+
+    await user.save();
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, null, "password reset successfully!"));
+  } catch (error) {
+    console.error("❌ Failed to reset password:", error.message);
+
+    throw new ApiError(500, "failed to reset password!");
+  }
+});
+
+const changeCurrentPassword = asyncHandler(async (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+
+  try {
+    const user = await User.findById(req.user._id).select("+password");
+
+    const isMatch = await user.isPasswordCorrect(oldPassword);
+
+    if (!isMatch) {
+      throw new ApiError(404, "password doesn't match!");
+    }
+
+    user.password = newPassword;
+
+    await user.save();
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, null, "password changed successfully!"));
+  } catch (error) {
+    console.error("❌ Failed to change password:", error.message);
+
+    throw new ApiError(500, "failed to change password!");
+  }
 });
 
 export {
@@ -336,5 +437,6 @@ export {
   forgotPasswordRequest,
   resendVerificationEmail,
   refreshAccessToken,
+  resetPassword,
   changeCurrentPassword,
 };
